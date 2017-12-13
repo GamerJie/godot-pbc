@@ -1,0 +1,8 @@
+# SCsub
+Import('env')
+
+env_pbc = env.Clone()
+
+env_pbc.add_source_files(env.modules_sources,"src/*.c")
+env_pbc.add_source_files(env.modules_sources,"*.cpp")
+env_pbc.Append(CPPPATH=".")
