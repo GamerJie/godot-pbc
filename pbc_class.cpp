@@ -9,12 +9,12 @@
 #include <stdlib.h>
 
 void PBCRMsg::_bind_methods() {
-    ObjectTypeDB::bind_method("get_size", &PBCRMsg::getSize);
-    ObjectTypeDB::bind_method("get_int", &PBCRMsg::getInt);
-    ObjectTypeDB::bind_method("get_uint", &PBCRMsg::getUInt);
-    ObjectTypeDB::bind_method("get_real", &PBCRMsg::getReal);
-    ObjectTypeDB::bind_method("get_string", &PBCRMsg::getString);
-    ObjectTypeDB::bind_method("get_msg", &PBCRMsg::getMsg);
+    ObjectTypeDB::bind_method(_MD("get_size", "field"), &PBCRMsg::getSize);
+    ObjectTypeDB::bind_method(_MD("get_int", "field", "index"), &PBCRMsg::getInt, DEFVAL(0));
+    ObjectTypeDB::bind_method(_MD("get_uint", "field", "index"), &PBCRMsg::getUInt, DEFVAL(0));
+    ObjectTypeDB::bind_method(_MD("get_real", "field", "index"), &PBCRMsg::getReal, DEFVAL(0));
+    ObjectTypeDB::bind_method(_MD("get_string", "field", "index"), &PBCRMsg::getString, DEFVAL(0));
+    ObjectTypeDB::bind_method(_MD("get_msg", "field", "index"), &PBCRMsg::getMsg, DEFVAL(0));
 }
 
 PBCRMsg::~PBCRMsg() {
@@ -54,12 +54,12 @@ Ref<PBCRMsg> PBCRMsg::getMsg(const String &key, int index) {
 }
 
 void PBCWMsg::_bind_methods() {
-    ObjectTypeDB::bind_method("set_int", &PBCWMsg::setInt);
-    ObjectTypeDB::bind_method("set_uint", &PBCWMsg::setUInt);
-    ObjectTypeDB::bind_method("set_real", &PBCWMsg::setReal);
-    ObjectTypeDB::bind_method("set_string", &PBCWMsg::setString);
-    ObjectTypeDB::bind_method("mutable_msg", &PBCWMsg::mutableMsg);
-    ObjectTypeDB::bind_method("encode", &PBCWMsg::encode);
+    ObjectTypeDB::bind_method(_MD("set_int", "field", "value"), &PBCWMsg::setInt);
+    ObjectTypeDB::bind_method(_MD("set_uint", "field", "value"), &PBCWMsg::setUInt);
+    ObjectTypeDB::bind_method(_MD("set_real", "field", "value"), &PBCWMsg::setReal);
+    ObjectTypeDB::bind_method(_MD("set_string", "field", "value"), &PBCWMsg::setString);
+    ObjectTypeDB::bind_method(_MD("mutable_msg", "field"), &PBCWMsg::mutableMsg);
+    ObjectTypeDB::bind_method(_MD("encode"), &PBCWMsg::encode);
 }
 
 PBCWMsg::~PBCWMsg() {
@@ -102,9 +102,9 @@ Variant PBCWMsg::encode() {
 }
 
 void PBCEnv::_bind_methods() {
-    ObjectTypeDB::bind_method("register_proto", &PBCEnv::registerProto);
-    ObjectTypeDB::bind_method("decode", &PBCEnv::decode);
-    ObjectTypeDB::bind_method("new_msg", &PBCEnv::newMsg);
+    ObjectTypeDB::bind_method(_MD("register_proto", "filename"), &PBCEnv::registerProto);
+    ObjectTypeDB::bind_method(_MD("decode", "type", "data"), &PBCEnv::decode);
+    ObjectTypeDB::bind_method(_MD("new_msg", "type"), &PBCEnv::newMsg);
 }
 
 PBCEnv::PBCEnv(): _env(pbc_new()) { }

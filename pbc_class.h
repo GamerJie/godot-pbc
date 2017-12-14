@@ -23,11 +23,11 @@ public:
     ~PBCRMsg();
 
     size_t getSize(const String &key);
-    int64_t getInt(const String &key, int index);
-    uint64_t getUInt(const String &key, int index);
-    double getReal(const String &key, int index);
-    String getString(const String &key, int index);
-    Ref<PBCRMsg> getMsg(const String &key, int index);
+    int64_t getInt(const String &key, int index = 0);
+    uint64_t getUInt(const String &key, int index = 0);
+    double getReal(const String &key, int index = 0);
+    String getString(const String &key, int index = 0);
+    Ref<PBCRMsg> getMsg(const String &key, int index = 0);
 };
 
 class PBCWMsg: public Reference {
