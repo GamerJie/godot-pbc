@@ -9,12 +9,12 @@
 #include <stdlib.h>
 
 void PBCRMsg::_bind_methods() {
-    ObjectTypeDB::bind_method(_MD("get_size", "field"), &PBCRMsg::getSize);
-    ObjectTypeDB::bind_method(_MD("get_int", "field", "index"), &PBCRMsg::getInt, DEFVAL(0));
-    ObjectTypeDB::bind_method(_MD("get_uint", "field", "index"), &PBCRMsg::getUInt, DEFVAL(0));
-    ObjectTypeDB::bind_method(_MD("get_real", "field", "index"), &PBCRMsg::getReal, DEFVAL(0));
-    ObjectTypeDB::bind_method(_MD("get_string", "field", "index"), &PBCRMsg::getString, DEFVAL(0));
-    ObjectTypeDB::bind_method(_MD("get_msg", "field", "index"), &PBCRMsg::getMsg, DEFVAL(0));
+    ClassDB::bind_method(D_METHOD("get_size", "field"), &PBCRMsg::getSize);
+    ClassDB::bind_method(D_METHOD("get_int", "field", "index"), &PBCRMsg::getInt, DEFVAL(0));
+    ClassDB::bind_method(D_METHOD("get_uint", "field", "index"), &PBCRMsg::getUInt, DEFVAL(0));
+    ClassDB::bind_method(D_METHOD("get_real", "field", "index"), &PBCRMsg::getReal, DEFVAL(0));
+    ClassDB::bind_method(D_METHOD("get_string", "field", "index"), &PBCRMsg::getString, DEFVAL(0));
+    ClassDB::bind_method(D_METHOD("get_msg", "field", "index"), &PBCRMsg::getMsg, DEFVAL(0));
 }
 
 PBCRMsg::~PBCRMsg() {
@@ -54,12 +54,12 @@ Ref<PBCRMsg> PBCRMsg::getMsg(const String &key, int index) {
 }
 
 void PBCWMsg::_bind_methods() {
-    ObjectTypeDB::bind_method(_MD("set_int", "field", "value"), &PBCWMsg::setInt);
-    ObjectTypeDB::bind_method(_MD("set_uint", "field", "value"), &PBCWMsg::setUInt);
-    ObjectTypeDB::bind_method(_MD("set_real", "field", "value"), &PBCWMsg::setReal);
-    ObjectTypeDB::bind_method(_MD("set_string", "field", "value"), &PBCWMsg::setString);
-    ObjectTypeDB::bind_method(_MD("mutable_msg", "field"), &PBCWMsg::mutableMsg);
-    ObjectTypeDB::bind_method(_MD("encode"), &PBCWMsg::encode);
+    ClassDB::bind_method(D_METHOD("set_int", "field", "value"), &PBCWMsg::setInt);
+    ClassDB::bind_method(D_METHOD("set_uint", "field", "value"), &PBCWMsg::setUInt);
+    ClassDB::bind_method(D_METHOD("set_real", "field", "value"), &PBCWMsg::setReal);
+    ClassDB::bind_method(D_METHOD("set_string", "field", "value"), &PBCWMsg::setString);
+    ClassDB::bind_method(D_METHOD("mutable_msg", "field"), &PBCWMsg::mutableMsg);
+    ClassDB::bind_method(D_METHOD("encode"), &PBCWMsg::encode);
 }
 
 PBCWMsg::~PBCWMsg() {
@@ -95,16 +95,16 @@ Ref<PBCWMsg> PBCWMsg::mutableMsg(const String &key) {
 Variant PBCWMsg::encode() {
     struct pbc_slice slice;
     pbc_wmessage_buffer(_msg, &slice);
-    DVector<uint8_t> *vec = new DVector<uint8_t>;
+    PoolVector<uint8_t> *vec = new PoolVector<uint8_t>;
     vec->resize(slice.len);
     memcpy(vec->write().ptr(), slice.buffer, slice.len);
     return *vec;
 }
 
 void PBCEnv::_bind_methods() {
-    ObjectTypeDB::bind_method(_MD("register_proto", "filename"), &PBCEnv::registerProto);
-    ObjectTypeDB::bind_method(_MD("decode", "type", "data"), &PBCEnv::decode);
-    ObjectTypeDB::bind_method(_MD("new_msg", "type"), &PBCEnv::newMsg);
+    ClassDB::bind_method(D_METHOD("register_proto", "filename"), &PBCEnv::registerProto);
+    ClassDB::bind_method(D_METHOD("decode", "type", "data"), &PBCEnv::decode);
+    ClassDB::bind_method(D_METHOD("new_msg", "type"), &PBCEnv::newMsg);
 }
 
 PBCEnv::PBCEnv(): _env(pbc_new()) { }
@@ -126,7 +126,7 @@ bool PBCEnv::registerProto(const String &filename) {
     memdelete(fa);
 }
 
-Ref<PBCRMsg> PBCEnv::decode(const String &type, const DVector<uint8_t> &var) {
+Ref<PBCRMsg> PBCEnv::decode(const String &type, const PoolVector<uint8_t> &var) {
     struct pbc_slice slice;
     slice.len = var.size();
     slice.buffer = (void*)var.read().ptr();

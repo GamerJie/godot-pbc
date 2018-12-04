@@ -3,9 +3,9 @@
 #include "pbc_class.h"
 
 void register_pbc_types() {
-    ObjectTypeDB::register_type<PBCRMsg>();
-    ObjectTypeDB::register_type<PBCWMsg>();
-    ObjectTypeDB::register_type<PBCEnv>();
+    ClassDB::register_class<PBCRMsg>();
+    ClassDB::register_class<PBCWMsg>();
+    ClassDB::register_class<PBCEnv>();
 }
 
 void unregister_pbc_types() {

@@ -10,7 +10,7 @@ struct pbc_wmessage;
 }
 
 class PBCRMsg: public Reference {
-    OBJ_TYPE(PBCRMsg, Reference);
+    GDCLASS(PBCRMsg, Reference);
 
     struct pbc_rmessage *_msg;
     bool _isRoot;
@@ -31,7 +31,7 @@ public:
 };
 
 class PBCWMsg: public Reference {
-    OBJ_TYPE(PBCWMsg, Reference);
+    GDCLASS(PBCWMsg, Reference);
 
     struct pbc_wmessage *_msg;
     bool _isRoot;
@@ -53,7 +53,7 @@ public:
 };
 
 class PBCEnv: public Reference {
-    OBJ_TYPE(PBCEnv, Reference);
+    GDCLASS(PBCEnv, Reference);
 
     struct pbc_env *_env;
 
@@ -64,7 +64,7 @@ public:
     PBCEnv();
     ~PBCEnv();
     bool registerProto(const String &filename);
-    Ref<PBCRMsg> decode(const String &type, const DVector<uint8_t> &var);
+    Ref<PBCRMsg> decode(const String &type, const PoolVector<uint8_t> &var);
     Ref<PBCWMsg> newMsg(const String &type);
 };
 
