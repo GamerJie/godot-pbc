@@ -2,8 +2,8 @@
 
 #include "pbc.h"
 
-#include "resource.h"
-#include "os/file_access.h"
+#include "core/resource.h"
+#include "core/os/file_access.h"
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,7 +1,7 @@
 #ifndef _PBC_CLASS__
 #define _PBC_CLASS__
 
-#include "reference.h"
+#include "core/reference.h"
 
 extern "C" {
 struct pbc_env;
