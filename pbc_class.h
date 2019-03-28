@@ -30,28 +30,6 @@ public:
     Ref<PBCRMsg> getMsg(const String &key, int index = 0);
 };
 
-class PBCWMsg: public Reference {
-    GDCLASS(PBCWMsg, Reference);
-
-    struct pbc_wmessage *_msg;
-    bool _isRoot;
-
-protected:
-    static void _bind_methods();
-
-public:
-    inline PBCWMsg(struct pbc_wmessage *m = nullptr, bool r = false): _msg(m), _isRoot(r) {}
-    ~PBCWMsg();
-
-    void setInt(const String &key, int64_t val);
-    void setUInt(const String &key, uint64_t val);
-    void setReal(const String &key, double val);
-    void setString(const String &key, const String &val);
-    Ref<PBCWMsg> mutableMsg(const String &key);
-
-    Variant encode();
-};
-
 class PBCEnv: public Reference {
     GDCLASS(PBCEnv, Reference);
 
@@ -64,8 +42,9 @@ public:
     PBCEnv();
     ~PBCEnv();
     bool registerProto(const String &filename);
-    Ref<PBCRMsg> decode(const String &type, const PoolVector<uint8_t> &var);
-    Ref<PBCWMsg> newMsg(const String &type);
+	PoolByteArray encode(const String &type, Dictionary dict);
+	Dictionary decode(const String& type, PoolByteArray data);
+	int enumId(const String &type, const String &name);
 };
 
 #endif // _PBC_CLASS__

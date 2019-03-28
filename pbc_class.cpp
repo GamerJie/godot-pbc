@@ -53,58 +53,11 @@ Ref<PBCRMsg> PBCRMsg::getMsg(const String &key, int index) {
     return rmsg;
 }
 
-void PBCWMsg::_bind_methods() {
-    ClassDB::bind_method(D_METHOD("set_int", "field", "value"), &PBCWMsg::setInt);
-    ClassDB::bind_method(D_METHOD("set_uint", "field", "value"), &PBCWMsg::setUInt);
-    ClassDB::bind_method(D_METHOD("set_real", "field", "value"), &PBCWMsg::setReal);
-    ClassDB::bind_method(D_METHOD("set_string", "field", "value"), &PBCWMsg::setString);
-    ClassDB::bind_method(D_METHOD("mutable_msg", "field"), &PBCWMsg::mutableMsg);
-    ClassDB::bind_method(D_METHOD("encode"), &PBCWMsg::encode);
-}
-
-PBCWMsg::~PBCWMsg() {
-    if (_msg != nullptr && _isRoot) {
-        pbc_wmessage_delete(_msg);
-    }
-}
-
-void PBCWMsg::setInt(const String &key, int64_t val) {
-    setUInt(key, (uint64_t)val);
-}
-
-void PBCWMsg::setUInt(const String &key, uint64_t val) {
-    pbc_wmessage_integer(_msg, key.utf8().get_data(), static_cast<uint32_t>(val), static_cast<uint32_t>(val >> 32));
-}
-
-void PBCWMsg::setReal(const String &key, double val) {
-    pbc_wmessage_real(_msg, key.utf8().get_data(), val);
-}
-
-void PBCWMsg::setString(const String &key, const String &val) {
-    const CharString &cstr = val.utf8();
-    pbc_wmessage_string(_msg, key.utf8().get_data(), cstr.get_data(), cstr.length());
-}
-
-Ref<PBCWMsg> PBCWMsg::mutableMsg(const String &key) {
-    struct pbc_wmessage *msg = pbc_wmessage_message(_msg, key.utf8().get_data());
-    if (msg == nullptr) return nullptr;
-    PBCWMsg *wmsg = new PBCWMsg(msg, false);
-    return wmsg;
-}
-
-Variant PBCWMsg::encode() {
-    struct pbc_slice slice;
-    pbc_wmessage_buffer(_msg, &slice);
-    PoolVector<uint8_t> *vec = new PoolVector<uint8_t>;
-    vec->resize(slice.len);
-    memcpy(vec->write().ptr(), slice.buffer, slice.len);
-    return *vec;
-}
-
 void PBCEnv::_bind_methods() {
     ClassDB::bind_method(D_METHOD("register_proto", "filename"), &PBCEnv::registerProto);
     ClassDB::bind_method(D_METHOD("decode", "type", "data"), &PBCEnv::decode);
-    ClassDB::bind_method(D_METHOD("new_msg", "type"), &PBCEnv::newMsg);
+    ClassDB::bind_method(D_METHOD("encode", "type", "dict"), &PBCEnv::encode);
+	ClassDB::bind_method(D_METHOD("enum_id", "type", "name"), &PBCEnv::enumId);
 }
 
 PBCEnv::PBCEnv(): _env(pbc_new()) { }
@@ -126,19 +79,132 @@ bool PBCEnv::registerProto(const String &filename) {
     memdelete(fa);
 }
 
-Ref<PBCRMsg> PBCEnv::decode(const String &type, const PoolVector<uint8_t> &var) {
-    struct pbc_slice slice;
-    slice.len = var.size();
-    slice.buffer = (void*)var.read().ptr();
-    struct pbc_rmessage *msg = pbc_rmessage_new(_env, type.utf8().get_data(), &slice);
-    if (msg == nullptr) return nullptr;
-    PBCRMsg *rmsg = new PBCRMsg(msg, true);
-    return rmsg;
+// Ref<PBCRMsg> PBCEnv::decode(const String &type, const PoolVector<uint8_t> &var) {
+    // struct pbc_slice slice;
+    // slice.len = var.size();
+    // slice.buffer = (void*)var.read().ptr();
+    // struct pbc_rmessage *msg = pbc_rmessage_new(_env, type.utf8().get_data(), &slice);
+    // if (msg == nullptr) return nullptr;
+    // PBCRMsg *rmsg = new PBCRMsg(msg, true);
+    // return rmsg;
+// }
+
+struct pbc_wmessage * encode_dict(struct pbc_env * _env, const String &type, Dictionary dict, pbc_wmessage *parent = nullptr){
+	if(parent == nullptr)
+		struct pbc_wmessage *msg = pbc_wmessage_new(_env, type.ascii().get_data());
+	else
+		struct pbc_wmessage *msg = pbc_wmessage_message(parent , key.ascii().get_data());
+	
+	if (msg == nullptr)
+		return nullptr;
+
+	List<Variant> keys;
+	dict.get_key_list(&keys);
+	for (List<Variant>::Element *E = keys.front(); E; E = E->next()) {
+		String key = String(E->get());
+		auto value = dict[E->get()];
+
+		if (value.get_type() == Variant::INT) {
+			uint64_t val = static_cast<uint64_t>(value);
+			pbc_wmessage_integer(msg, key.ascii().get_data(), static_cast<uint32_t>(val), 0);
+		} else if (value.get_type() == Variant::REAL) {
+			uint64_t val = static_cast<uint64_t>(value);
+			pbc_wmessage_real(msg, key.ascii().get_data(), val);
+		} else if (value.get_type() == Variant::STRING) {
+			const CharString str = String(value).ascii();
+			pbc_wmessage_string(msg, key.ascii().get_data(), str.get_data(), str.length());
+		} else if (value.get_type() == Variant::DICTIONARY) {
+			encode_dict(_env, type, value, msg);
+		}
+	}
+	
+	return msg;
 }
 
-Ref<PBCWMsg> PBCEnv::newMsg(const String &type) {
-    struct pbc_wmessage *msg = pbc_wmessage_new(_env, type.utf8().get_data());
-    if (msg == nullptr) return nullptr;
-    PBCWMsg *wmsg = new PBCWMsg(msg, true);
-    return wmsg;
+PoolByteArray PBCEnv::encode(const String &type, Dictionary dict) {
+	struct pbc_wmessage *msg = encode_dict(_env, type, dict)
+	if(msg == nullptr)
+		return PoolByteArray()
+	
+	struct pbc_slice slice;
+	pbc_wmessage_buffer(msg, &slice);
+
+	uint8_t vec[8 * 1024];
+	memset(vec, 0, slice.len);
+	memcpy(vec, slice.buffer, slice.len);
+	pbc_wmessage_delete(msg);
+
+	PoolByteArray data;
+	data.resize(slice.len);
+
+	for (int i = 0; i < slice.len; i++)
+		data.set(i, vec[i]);
+	
+	return data;
+}
+
+void decode_callback(void *ud , int type, const char * typename , union pbc_value *v, int id, const char *key) {
+	switch(type & ~PBC_REPEATED) {
+		case PBC_MESSAGE:
+			printf("[%s]  -> \n" , typename);
+			pbc_decode(ud, typename, &(v->s), decode_callback, ud);
+			printf("---------\n");
+			break;
+		case PBC_INT:
+			printf("%d\n", (int)v->i.low);
+			break;
+		case PBC_REAL:
+			printf("%lf\n", v->f);
+			break;
+		case PBC_BOOL:
+			printf("<%s>\n", v->i.low ? "true" : "false");
+			break;
+		case PBC_ENUM:
+			printf("[%s:%d]\n", v->e.name , v->e.id);
+			break;
+		case PBC_STRING: {
+			char buffer[v->s.len+1];
+			memcpy(buffer, v->s.buffer, v->s.len);
+			buffer[v->s.len] = '\0';
+			printf("\"%s\"\n", buffer);
+			break;
+		}
+		case PBC_BYTES: {
+			int i;
+			uint8_t *buffer = v->s.buffer;
+			for (i=0;i<v->s.len;i++) {
+				printf("%02X ",buffer[i]);
+			}
+			printf("\n");
+			break;
+		}
+		case PBC_INT64: {
+			printf("0x%x%08x\n",v->i.hi, v->i.low);
+			break;
+		}
+		case PBC_UINT:
+			printf("%u\n",v->i.low);
+			break;
+		default:
+			printf("!!! %d\n", type);
+			break;
+		}
+	}
+}
+
+Dictionary PBCEnv:decode(const String& type, PoolByteArray data) {
+	struct pbc_slice slice;
+    slice.len = var.size();
+    slice.buffer = (void*)var.read().ptr();
+	struct pbc_rmessage * msg = pbc_rmessage_new(_env, type.ascii().get_data(), &slice);
+	Dictionary dict;
+	if(msg == nullptr)
+		return dict;
+	
+	pbc_decode(_env, type.ascii().get_data(), &slice, decode_callback , _env);
+	return dict;
+}
+
+int PBCEnv::enumId(const String &type, const String &name) {
+	return pbc_enum_id(_env, type.utf8().get_data(), name.utf8().get_data());
 }

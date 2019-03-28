@@ -4,7 +4,6 @@
 
 void register_pbc_types() {
     ClassDB::register_class<PBCRMsg>();
-    ClassDB::register_class<PBCWMsg>();
     ClassDB::register_class<PBCEnv>();
 }
 
