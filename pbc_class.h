@@ -1,4 +1,4 @@
-#ifndef _PBC_CLASS__
+﻿#ifndef _PBC_CLASS__
 #define _PBC_CLASS__
 
 #include "core/reference.h"
@@ -8,6 +8,11 @@ struct pbc_env;
 struct pbc_rmessage;
 struct pbc_wmessage;
 }
+
+struct pbc_godot_data {
+	Dictionary *dict;
+	struct pbc_env* env;
+};
 
 class PBCEnv: public Reference {
     GDCLASS(PBCEnv, Reference);
@@ -22,7 +27,7 @@ public:
     ~PBCEnv();
     bool registerProto(const String &filename);
 	PoolByteArray encode(const String &type, Dictionary dict);
-	Dictionary decode(const String& type, PoolByteArray data);
+	Dictionary decode(const String &type, PoolByteArray data);
 	int enumId(const String &type, const String &name);
 };
 
