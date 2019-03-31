@@ -1,4 +1,4 @@
-#include "pbc_class.h"
+﻿#include "pbc_class.h"
 
 #include "pbc.h"
 
@@ -23,34 +23,28 @@ PBCEnv::~PBCEnv() {
 
 bool PBCEnv::registerProto(const String &filename) {
     FileAccess *fa = FileAccess::open(filename, FileAccess::READ);
-    if (fa == nullptr) return false;
+    if (fa == nullptr)
+		return false;
+
     struct pbc_slice slice;
     size_t len = fa->get_len();
     slice.len = len;
     slice.buffer = malloc(len);
     fa->get_buffer(static_cast<uint8_t*>(slice.buffer), len);
+
     pbc_register(_env, &slice);
     free(slice.buffer);
     memdelete(fa);
+
 	return true;
 }
-
-// Ref<PBCRMsg> PBCEnv::decode(const String &type, const PoolVector<uint8_t> &var) {
-    // struct pbc_slice slice;
-    // slice.len = var.size();
-    // slice.buffer = (void*)var.read().ptr();
-    // struct pbc_rmessage *msg = pbc_rmessage_new(_env, type.utf8().get_data(), &slice);
-    // if (msg == nullptr) return nullptr;
-    // PBCRMsg *rmsg = new PBCRMsg(msg, true);
-    // return rmsg;
-// }
 
 struct pbc_wmessage * encode_dict(struct pbc_env * _env, const String &type, Dictionary dict, pbc_wmessage *parent = nullptr) {
 	struct pbc_wmessage *msg;
 	if(parent == nullptr)
-		msg = pbc_wmessage_new(_env, type.ascii().get_data());
+		msg = pbc_wmessage_new(_env, type.utf8().get_data());
 	else
-		msg = pbc_wmessage_message(parent , type.ascii().get_data());
+		msg = pbc_wmessage_message(parent , type.utf8().get_data());
 	
 	if (msg == nullptr)
 		return nullptr;
@@ -63,13 +57,13 @@ struct pbc_wmessage * encode_dict(struct pbc_env * _env, const String &type, Dic
 
 		if (value.get_type() == Variant::INT) {
 			uint64_t val = static_cast<uint64_t>(value);
-			pbc_wmessage_integer(msg, key.ascii().get_data(), static_cast<uint32_t>(val), 0);
+			pbc_wmessage_integer(msg, key.utf8().get_data(), static_cast<uint32_t>(val), 0);
 		} else if (value.get_type() == Variant::REAL) {
 			uint64_t val = static_cast<uint64_t>(value);
-			pbc_wmessage_real(msg, key.ascii().get_data(), val);
+			pbc_wmessage_real(msg, key.utf8().get_data(), val);
 		} else if (value.get_type() == Variant::STRING) {
-			const CharString str = String(value).ascii();
-			pbc_wmessage_string(msg, key.ascii().get_data(), str.get_data(), str.length());
+			const CharString str = String(value).utf8();
+			pbc_wmessage_string(msg, key.utf8().get_data(), str.get_data(), str.length());
 		} else if (value.get_type() == Variant::DICTIONARY) {
 			encode_dict(_env, key, value, msg);
 		}
@@ -86,78 +80,93 @@ PoolByteArray PBCEnv::encode(const String &type, Dictionary dict) {
 	struct pbc_slice slice;
 	pbc_wmessage_buffer(msg, &slice);
 
-	uint8_t vec[8 * 1024];
-	memset(vec, 0, slice.len);
-	memcpy(vec, slice.buffer, slice.len);
-	pbc_wmessage_delete(msg);
-
 	PoolByteArray data;
 	data.resize(slice.len);
-
-	for (int i = 0; i < slice.len; i++)
-		data.set(i, vec[i]);
+	memcpy(data.write().ptr(), slice.buffer, slice.len);
+	pbc_wmessage_delete(msg);
 	
 	return data;
 }
 
 void decode_callback(void *ud, int type, const char *tname, union pbc_value *v, int id, const char *key) {
+	struct pbc_godot_data *pbc_data = (struct pbc_godot_data *)ud;
+	//Dictionary *dict = (Dictionary *)ud;
+		
 	switch(type & ~PBC_REPEATED) {
-		case PBC_MESSAGE:
-			printf("[%s]  -> \n" , tname);
-			pbc_decode((struct pbc_env *)ud, tname, &(v->s), decode_callback, ud);
-			printf("---------\n");
+		case PBC_MESSAGE: {
+			Dictionary second;
+			struct pbc_godot_data senond_data;
+			senond_data.env = pbc_data->env;
+			senond_data.dict = &second;
+
+			// printf("[%s]  -> \n" , tname);
+			pbc_decode(pbc_data->env, tname, &(v->s), decode_callback, &senond_data);
+			(*pbc_data->dict)[key] = second;
+			// printf("---------\n");
 			break;
+		}
 		case PBC_INT:
-			printf("%s : %d\n", key, (int)v->i.low);
+			// printf("%s : %d\n", key, (int)v->i.low);
+			(*pbc_data->dict)[key] = v->i.low;
 			break;
 		case PBC_REAL:
-			printf("%lf\n", v->f);
+			// printf("%lf\n", v->f);
+			(*pbc_data->dict)[key] = v->f;
 			break;
 		case PBC_BOOL:
-			printf("<%s>\n", v->i.low ? "true" : "false");
+			// printf("<%s>\n", v->i.low ? "true" : "false");
+			(*pbc_data->dict)[key] = v->i.low ? true : false;
 			break;
 		case PBC_ENUM:
-			printf("[%s:%d]\n", v->e.name , v->e.id);
+			// printf("[%s:%d]\n", v->e.name , v->e.id);
 			break;
 		case PBC_STRING: {
-			char buffer[v->s.len+1];
+			char *buffer = (char*)malloc((v->s.len + 1) * sizeof(char));
+			memset(buffer, 0, v->s.len+1);
 			memcpy(buffer, v->s.buffer, v->s.len);
 			buffer[v->s.len] = '\0';
-			printf("%s : \"%s\"\n", key, buffer);
+			//printf("%s : \"%s\"\n", key, buffer);
+
+			(*pbc_data->dict)[key] = String::utf8(buffer);
 			break;
 		}
 		case PBC_BYTES: {
-			int i;
-			uint8_t *buffer = (uint8_t*)v->s.buffer;
-			for (i=0;i<v->s.len;i++) {
-				printf("%02X ",buffer[i]);
-			}
-			printf("\n");
+			// int i;
+			// uint8_t *buffer = (uint8_t*)v->s.buffer;
+			// for (i=0;i<v->s.len;i++) {
+				// printf("%02X ",buffer[i]);
+			// }
+			// printf("\n");
 			break;
 		}
 		case PBC_INT64: {
-			printf("0x%x%08x\n",v->i.hi, v->i.low);
+			// printf("%s : %ld\n", key, v->i.low);
+			(*pbc_data->dict)[key] = v->i.low;
 			break;
 		}
 		case PBC_UINT:
-			printf("%u\n",v->i.low);
+			// printf("%u\n",v->i.low);
+			(*pbc_data->dict)[key] = v->i.low;
 			break;
 		default:
-			printf("!!! %d\n", type);
+			// printf("!!! %d\n", type);
 			break;
 	}
 }
 
-Dictionary PBCEnv::decode(const String& type, PoolByteArray data) {
+Dictionary PBCEnv::decode(const String &type, PoolByteArray data) {
+	Dictionary dict;
 	struct pbc_slice slice;
     slice.len = data.size();
-    slice.buffer = (void*)data.read().ptr();
-	struct pbc_rmessage * msg = pbc_rmessage_new(_env, type.ascii().get_data(), &slice);
-	Dictionary dict;
-	if(msg == nullptr)
-		return dict;
+	slice.buffer = malloc(slice.len);
+	//(void *)data.read().ptr();
+	memcpy(slice.buffer, data.read().ptr(), slice.len);
 	
-	pbc_decode(_env, type.ascii().get_data(), &slice, decode_callback , _env);
+	struct pbc_godot_data pbc_data;
+	pbc_data.env = _env;
+	pbc_data.dict = &dict;
+	pbc_decode(_env, type.utf8().get_data(), &slice, decode_callback, &pbc_data);
+
 	return dict;
 }
 
